@@ -4,6 +4,8 @@ import sys
 import locale
 import argparse
 
+import tweepy
+
 
 def write(data, stream = sys.stdout):
     """
@@ -95,6 +97,21 @@ def on_stdout( data, asked, endline="\n" ):
         yield prefix*i + line
 
 
+def on_twitter( data, api, asked, endline="\n"  ):
+    lines = setup(data, asked)
+
+    prev_status_id = None
+
+    for line in lines:
+        # API.update_status(status[, in_reply_to_status_id][, lat][, long][, source][, place_id])
+        status = api.update_status(line, prev_status_id)
+
+        if asked.chain:
+            prev_status_id = status.id
+
+        yield status.text + endline
+
+
 def operate( func, *args ):
     for line in func( readline(sys.stdin), *args ):
         write(line)
@@ -129,6 +146,8 @@ parser.add_argument("-d", "--adorn", action="store_true",
 parser.add_argument("-q", "--quiet", action="store_true",
         help="Do not print errors and warnings on the standard error output.")
 
+# TODO option: rate at which to post lines
+
 # API-dependant options
 
 parser.add_argument("-c", "--chain", action="store_true",
@@ -152,23 +171,26 @@ if asked.api == "stdout":
     operate( on_stdout, asked )
 
 
-elif asked.api == "twitter": # TODO
+elif asked.api == "twitter":
 
-    import tweepy
+    import ConfigParser
 
-    consumer_key = ""
-    consumer_secret = ""
+    config = ConfigParser.RawConfigParser()
+    config.read('twitter.conf')
 
-    access_token = ""
-    access_token_secret = ""
+    consumer_key = config.get("Auth","key")
+    consumer_secret = config.get("Auth","key_secret")
+
+    try:
+        verifier_code = config.get("Auth","code")
+    except:
+        access_token = config.get("Auth","token")
+        access_token_secret = config.get("Auth","token_secret")
 
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret, "https://api.twitter.com/1.1/")
     auth.set_access_token(access_token, access_token_secret)
 
     api = tweepy.API(auth)
 
-    public_tweets = api.home_timeline()
-    for tweet in public_tweets:
-        print "#########################################"
-        print tweet.text
+    operate( on_twitter, api, asked )
 
