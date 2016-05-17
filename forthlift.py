@@ -102,9 +102,21 @@ def on_twitter( data, api, asked, endline="\n"  ):
 
     prev_status_id = None
 
+    images = asked.twitter_images
+    images.reverse()
+
     for line in lines:
-        # API.update_status(status[, in_reply_to_status_id][, lat][, long][, source][, place_id])
-        status = api.update_status(line, prev_status_id)
+        if images:
+            img = images.pop()
+        else:
+            img = None
+
+        if img:
+            # API.update_with_media(filename[, status][, in_reply_to_status_id][, lat][, long][, source][, place_id][, file])
+            status = api.update_with_media(img, line, prev_status_id)
+        else:
+            # API.update_status(status[, in_reply_to_status_id][, lat][, long][, source][, place_id])
+            status = api.update_status(line, prev_status_id)
 
         if asked.chain:
             prev_status_id = status.id
@@ -153,8 +165,11 @@ parser.add_argument("-q", "--quiet", action="store_true",
 parser.add_argument("-c", "--chain", action="store_true",
         help="Chained actions. Whatever that means depends on the chosen API.")
 
-asked = parser.parse_args()
+# Twitter
+parser.add_argument("--twitter-images", metavar="FILENAME(S)", nargs="+", type=str,
+        help="Upload each given image files along with the corresponding tweets in sequence. If there are more images than tweets, they are silently ignored.")
 
+asked = parser.parse_args()
 
 # Consistency checks
 
@@ -162,6 +177,26 @@ if asked.ignore and asked.trim:
     if not asked.quiet:
         sys.stderr.write("WARNING: asking to trim AND to ignore is not logical, I will ignore.")
     assert( not (asked.ignore and asked.trim) )
+
+if asked.twitter_images:
+    if not asked.api == "twitter":
+        if not asked.quiet:
+            sys.stderr.write("WARNING: asking to upload images on twitter while not using the twitter API is not logical, I will ignore.")
+        assert( not (asked.twitter_images and not asked.api=="twitter") )
+
+    else: # Test readable images
+        cannot=[]
+        for img in asked.twitter_images:
+            try:
+                with open(img) as f:
+                    f.read()
+            except OSError:
+                cannot.append(img)
+        if cannot:
+            print("Cannot open the following image files, I will not continue: ")
+            for img in cannot:
+                print(img)
+            sys.exit(5) # I/O Error
 
 
 # APIs
