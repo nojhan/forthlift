@@ -168,12 +168,11 @@ def setup_twitter(configfile="twitter.conf"):
 
     print "Then paste the Personal Identification Number given by Twitter:"
     verifier = raw_input('PIN: ').strip()
-    auth.get_access_token(verifier)
-    # print 'ACCESS_KEY = "%s"' % auth.access_token.key
-    # print 'ACCESS_SECRET = "%s"' % auth.access_token.secret
+    token = auth.get_access_token(verifier)
 
     # Authenticate and get the user name.
-    auth.set_access_token(auth.access_token.key, auth.access_token.secret)
+    token_key, token_secret = token
+    auth.set_access_token(token_key, token_secret)
     api = tweepy.API(auth)
     username = api.me().name
     print "Authentication successful, ready to post to account: " + username
@@ -187,8 +186,8 @@ def setup_twitter(configfile="twitter.conf"):
 
     if not config.has_section("Auth"):
         config.add_section('Auth')
-    config.set('Auth', 'local_token', auth.access_token.key)
-    config.set('Auth', 'local_token_secret', auth.access_token.secret)
+    config.set('Auth', 'local_token', token_key)
+    config.set('Auth', 'local_token_secret', token_secret)
 
     # Writing our configuration file to 'example.cfg'
     with open(configfile, 'wb') as fd:
