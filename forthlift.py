@@ -19,7 +19,7 @@ def write(data, stream = sys.stdout):
     Write "data" on the given stream, then flush, silently handling broken pipes.
     """
     try:
-        stream.write(data)
+        stream.write(data.encode(locale.getpreferredencoding(True) or "utf-8"))
         stream.flush()
 
     # Silently handle broken pipes
@@ -52,10 +52,10 @@ def setup_counter( data, asked ):
     data = list(data)
     nb = len(data)
     # " int/int"
-    counter_size = len(str(nb))*2 + 1 + 1
+    counter_size = len(str(nb).encode("utf-8").decode("utf-8") )*2 + 1 + 1
 
     for i,line in enumerate(data):
-        counter = " %i/%i" % (i+1,nb)
+        counter = u" %i/%i" % (i+1,nb)
         curmax = asked.max_len - len(counter)
         if len(line) > curmax:
             if asked.ignore:
@@ -109,7 +109,8 @@ def on_stdout( data, asked, endline="\n" ):
         if asked.independent:
             yield line
         else:
-            yield i + " " + line
+            l = u"%i %s" % (i,line)
+            yield l
 
 
 #
@@ -122,7 +123,8 @@ def on_twitter( data, api, asked, endline="\n"  ):
     prev_status_id = None
 
     images = asked.twitter_images
-    images.reverse()
+    if images:
+        images.reverse()
 
     for line in lines:
         if images:
@@ -247,7 +249,6 @@ if __name__=="__main__":
             help="Upload each given image files along with the corresponding tweets in the sequence. If there are more images than tweets, they are silently ignored.")
 
     asked = parser.parse_args()
-
 
     # Setup
     if asked.setup:
